@@ -1,8 +1,8 @@
-###Assignment
+### Assignment
 
 After doing the preliminary set up of your machine as explained above, create a program GxxHM1.java (for Java users) or GxxHM1.py (for Python users), where xx is your two-digit group number, which does the following things:
-Reads an input file (dataset.txt) of nonnegative doubles into an RDD dNumbers, as in the template.
 
+- Reads an input file (dataset.txt) of nonnegative doubles into an RDD dNumbers, as in the template.
 - Computes and prints the maximum value in dNumbers. This must be done in two ways:
   + using the reduce method of the RDD interface;
   + using the max method of the RDD interface 
