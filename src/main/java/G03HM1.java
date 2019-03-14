@@ -47,7 +47,24 @@ public class G03HM1 {
         final Double min = dNumbers.min(new DoubleComparator());
 
         JavaRDD<Double> dNormalizedNumbers = dNumbers.map((x) -> (x-min)/(max-min));
-        //dNormalizedNumbers.collect().stream().forEach(x -> System.out.println(x)); --> TEST to show the normalization
+        //dNormalizedNumbers.collect().stream().forEach(x -> System.out.println(x)); --> TODO: de-comment if you want to see the normalization
+
+
+        /**
+         * STEP 3 getting a "statistics of our choiche over the dNomralized data
+         * median:
+         * mean:
+         *
+         */
+
+        //Mediana
+        dNormalizedNumbers = dNormalizedNumbers.sortBy(x -> x, true, dNormalizedNumbers.partitions().size());
+        long numberOfElements = dNormalizedNumbers.count();
+        final long medianIndex = numberOfElements % 2 == 0? numberOfElements / 2: numberOfElements+1 /2;
+        System.out.println("Median of the values: "+String.valueOf(dNormalizedNumbers.zipWithIndex().filter(tuple -> tuple._2 == medianIndex).first()._1()));
+
+        //Media
+
     }
 
     // It is important to mark this class as `static`.
