@@ -27,7 +27,7 @@ public class G03HM1 {
                 }
             }
             catch (Exception e){
-                System.out.println("L'elemento che si vuole aggiungere ai dati non è un numero.");
+                System.out.println("The element trying to add is not a number");
             }
         }
         s.close();
