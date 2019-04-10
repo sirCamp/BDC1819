@@ -4,12 +4,10 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import scala.Tuple2;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.stream.StreamSupport;
@@ -36,7 +34,7 @@ public class SecondTemplate {
         JavaRDD<String> docs = sc.textFile(textFilePath);
 
         //repartition the documents in K parts
-        docs = docs.repartition(K);
+        docs = docs.repartition(K).cache();
 
         System.out.println("Numero di elementi: "+String.valueOf(docs.count()));
         long start = System.currentTimeMillis();
@@ -103,20 +101,12 @@ public class SecondTemplate {
 
                 })*/
 
-                .flatMapToPair((PairFlatMapFunction<Tuple2<Integer, Iterable<Tuple2<String, Long>>>, String, Long>) ele -> {
+                .flatMapToPair((PairFlatMapFunction<Tuple2<Integer, Iterable<Tuple2<String, Long>>>, String, Long>) element -> {
                     /*final Map<String,List<Tuple2<String,Long>>> map = StreamSupport.stream(ele._2.spliterator(), false)
                             .collect(groupingBy(t -> t._1));*/
 
-                    Map<String,Long> map = new HashMap<>();
-                    //Iterator<Tuple2<String,Long>>it = ele._2.iterator();
-                    Collection<Tuple2> collection = new ArrayList<>();
-                    ele._2.forEach(collection::add);
-
-                    /*while(it.hasNext()){
-                        collection.add(it.next());
-                    }*/
-
-                    Map<String, List<Tuple2<String,Long>>> groupedTuple = collection.stream().collect(groupingBy(tuple -> tuple._1));
+                    Map<String, List<Tuple2<String, Long>>> groupedTuple = StreamSupport.stream(element._2.spliterator(), false)
+                            .collect(groupingBy(t -> t._1));
 
                     //iterate over each list of string and reduce to list of tuple
                     final List<Tuple2<String, Long>> list =  new ArrayList<>();
@@ -163,14 +153,43 @@ public class SecondTemplate {
                     for (Map.Entry<String, Long> e : counts.entrySet()) {
                         pairs.add(new Tuple2<>(e.getKey(), e.getValue()));
                     }
-                    /*for(String t: tokens){
-                        pairs.add(new Tuple2<>(t, 1L));
-                    }*/
                     return pairs.iterator();
-                }).mapPartitionsToPair()
+                }).mapPartitionsToPair(tuple2Iterator -> {
 
+                    //Map<String,Long> map = new HashMap<>();
+                    //for the each element we create its list of pairs (w, c(w))
+                    Iterable<Tuple2<String, Long>> splitIterator = () -> tuple2Iterator;
+                    // parrallel falso in order to keep the order and no concurrecies
+                    Map<String, List<Tuple2<String, Long>>> groupedTuple = StreamSupport.stream(splitIterator.spliterator(), false)
+                            .collect(groupingBy(t -> t._1));
+                    final List<Tuple2<String, Long>> list = new ArrayList<>();
+
+                    groupedTuple.forEach((k, v) -> {
+                        Tuple2 tmpTuple = v.stream().reduce((tuple1, tuple2) -> new Tuple2<>(k, tuple1._2 + tuple2._2)).orElse(null);
+                        if (tmpTuple != null) {
+                            list.add(tmpTuple);
+                        }
+                    });
+                    //iterate over each list of string and reduce to list of tuple
+                    /*final List<Tuple2<String, Long>> list =  new ArrayList<>();
+                    groupedTuple.forEach( (k, v)-> {
+                        Tuple2 tmpTuple = v.stream().reduce((t1, t2) -> new Tuple2<String,Long>(k, t1._2+t2._2)).orElse(null);
+                        if(tmpTuple != null){
+                            list.add(tmpTuple);
+                        }
+
+                    });
+                    //Iterator<Tuple2<String,Long>>it = ele._2.iterator();
+
+                    //ele._2.forEach(collection::add);
+*/
+                    return list.iterator();
+
+                })
+                .reduceByKey((x, y) -> x + y);
 
         wordcountpairsSecondFirstVariant.cache();
+        wordcountpairsSecondSecondVariant.cache();
         /*wordcountpairs.cache();
         wordcountpairs.foreach(tp -> {
            // System.out.println("Word '"+tp._1+"' is present: "+String.valueOf(tp._2)+" times");
