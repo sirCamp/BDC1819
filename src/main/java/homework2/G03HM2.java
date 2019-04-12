@@ -114,12 +114,12 @@ public class G03HM2 /*implements CommonMethodsInterfac*/ {
                     String[] tokens = document.split(" ");
                     HashMap<String, Long> counts = new HashMap<>();
                     ArrayList<Tuple2<String, Long>> pairs = new ArrayList<>();
-                    for (String token : tokens) {
+                    Arrays.stream(tokens).forEach(token -> {
                         counts.put(token, 1L + counts.getOrDefault(token, 0L));
-                    }
-                    for (Map.Entry<String, Long> e : counts.entrySet()) {
-                        pairs.add(new Tuple2<>(e.getKey(), e.getValue()));
-                    }
+                    });
+                    counts.forEach((key, value) -> {
+                        pairs.add(new Tuple2<String, Long>(key, value));
+                    });
 
                     return pairs.iterator();
 
@@ -141,12 +141,13 @@ public class G03HM2 /*implements CommonMethodsInterfac*/ {
                     String[] tokens = document.split(" ");
                     HashMap<String, Long> counts = new HashMap<>();
                     ArrayList<Tuple2<String, Long>> pairs = new ArrayList<>();
-                    for (String token : tokens) {
+
+                    Arrays.stream(tokens).forEach(token -> {
                         counts.put(token, 1L + counts.getOrDefault(token, 0L));
-                    }
-                    for (Map.Entry<String, Long> e : counts.entrySet()) {
-                        pairs.add(new Tuple2<>(e.getKey(), e.getValue()));
-                    }
+                    });
+                    counts.forEach((key, value) -> {
+                        pairs.add(new Tuple2<String, Long>(key, value));
+                    });
                     return pairs.iterator();
                 })
                 .groupBy(randomKAssignment) // Using the group by we group each (w,ci(w)) by a random key k € [0, K-1] where K is given in input.
@@ -156,21 +157,14 @@ public class G03HM2 /*implements CommonMethodsInterfac*/ {
                  *  where c(x,w) corresponds to the summatory of (x,(w,ci(w))).
                  *  */
                 .flatMapToPair((PairFlatMapFunction<Tuple2<Integer, Iterable<Tuple2<String, Long>>>, String, Long>) element -> {
-                    //for the each element we create its list of pairs (w, c(w))
-                    Map<String, List<Tuple2<String, Long>>> groupedTuple = StreamSupport.stream(element._2.spliterator(), false)
-                            .collect(groupingBy(t -> t._1));
-
-                    /**
-                     * then we iterate over the list abdm for each word of the list we sum the occurencies of the same word
+                    /**for the each element we create its list of pairs (w, c(w))
+                     *
+                     * Then we iterate over the list abdm for each word of the list we sum the occurencies of the same word
                      * and we add a the tuple (w, c(w)) where c(w) is the sum of all the occurencies in the documents
                      */
                     final List<Tuple2<String, Long>> list = new ArrayList<>();
-                    groupedTuple.forEach((k, v) -> {
-                        Tuple2 tmpTuple = v.stream().reduce((t1, t2) -> new Tuple2<String, Long>(k, t1._2 + t2._2)).orElse(new Tuple2<String, Long>("", 0L));
-                        if (tmpTuple != null) {
-                            list.add(tmpTuple);
-                        }
-
+                    StreamSupport.stream(element._2.spliterator(), false).collect(groupingBy(t -> t._1)).forEach((k, v) -> {
+                        list.add(v.stream().reduce((t1, t2) -> new Tuple2<String, Long>(k, t1._2 + t2._2)).orElse(new Tuple2<String, Long>("", 0L)));
                     });
 
                     return list.iterator();
@@ -193,12 +187,12 @@ public class G03HM2 /*implements CommonMethodsInterfac*/ {
                     String[] tokens = document.split(" ");
                     HashMap<String, Long> counts = new HashMap<>();
                     ArrayList<Tuple2<String, Long>> pairs = new ArrayList<>();
-                    for (String token : tokens) {
+                    Arrays.stream(tokens).forEach(token -> {
                         counts.put(token, 1L + counts.getOrDefault(token, 0L));
-                    }
-                    for (Map.Entry<String, Long> e : counts.entrySet()) {
-                        pairs.add(new Tuple2<>(e.getKey(), e.getValue()));
-                    }
+                    });
+                    counts.forEach((key, value) -> {
+                        pairs.add(new Tuple2<String, Long>(key, value));
+                    });
                     return pairs.iterator();
 
                 }) /**
@@ -246,7 +240,8 @@ public class G03HM2 /*implements CommonMethodsInterfac*/ {
          * + Using repartition too frequently is not always useful. It could introduces overhead, specially when the Spark context is deployed on a cluster with sever workers (even worse when those workers are have different computation power, or when
          * the network performances between the nodes are not optimal)
          *
-         * + Repartition seems to increase the performances, but the number of partitions seems to be correlated to the number of the workers and by dataset dimension
+         * + Repartition seems to increase the performances, but the number of partitions seems to be correlated to the number of the workers and by dataset dimension: i.e: having 12 cores on our machines,
+         * K repartitions with K = 12 have better performances than K = 100
          *
          * + Performances are also correlated to lambda functions that are used by each step: Using Java 8 statements, like stream or reduce, can optimize the execution, computation time and reduce the algorithm complexity.
          */
